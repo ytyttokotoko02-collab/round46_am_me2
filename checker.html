@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>マスターデータ検証ツール</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&family=Noto+Serif+JP:wght@600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0f1117;
+    --surface: #1a1d27;
+    --surface2: #222535;
+    --border: #2e3248;
+    --accent: #4f8ef7;
+    --accent2: #7c6af7;
+    --correct: #2ecc71;
+    --wrong: #e74c3c;
+    --warn: #f39c12;
+    --text: #e8eaf6;
+    --text-dim: #8890b5;
+    --text-muted: #555c7a;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Noto Sans JP', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; padding: 40px 32px; }
+
+  h1 { font-family: 'Noto Serif JP', serif; font-size: 22px; margin-bottom: 6px; background: linear-gradient(135deg, var(--accent), var(--accent2)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+  .subtitle { font-size: 13px; color: var(--text-muted); margin-bottom: 32px; }
+
+  /* UPLOAD */
+  .upload-area {
+    border: 2px dashed var(--border);
+    border-radius: 14px;
+    padding: 36px;
+    text-align: center;
+    margin-bottom: 32px;
+    transition: border-color 0.2s;
+    cursor: pointer;
+  }
+  .upload-area:hover, .upload-area.drag { border-color: var(--accent); }
+  .upload-area p { color: var(--text-dim); font-size: 14px; margin-bottom: 14px; }
+  .upload-btn {
+    padding: 10px 28px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    border: none; border-radius: 8px;
+    color: #fff; font-family: 'Noto Sans JP', sans-serif;
+    font-size: 13px; font-weight: 700; cursor: pointer;
+  }
+  #fileInput { display: none; }
+
+  /* SUMMARY CARDS */
+  .summary { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 28px; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 18px; text-align: center; }
+  .card .num { font-size: 32px; font-weight: 700; margin-bottom: 4px; }
+  .card .lbl { font-size: 11px; color: var(--text-muted); letter-spacing: 1px; }
+  .num.ok  { color: var(--correct); }
+  .num.ng  { color: var(--wrong); }
+  .num.warn{ color: var(--warn); }
+  .num.info{ color: var(--accent); }
+
+  /* AUTO CHECK */
+  .check-section { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; margin-bottom: 28px; overflow: hidden; }
+  .check-header { padding: 14px 20px; border-bottom: 1px solid var(--border); font-size: 12px; letter-spacing: 1px; color: var(--text-dim); text-transform: uppercase; display: flex; align-items: center; gap: 8px; }
+  .check-list { padding: 16px 20px; display: flex; flex-direction: column; gap: 8px; }
+  .check-item { display: flex; align-items: flex-start; gap: 10px; font-size: 13px; padding: 8px 12px; border-radius: 8px; }
+  .check-item.pass { background: rgba(46,204,113,0.08); color: var(--correct); }
+  .check-item.fail { background: rgba(231,76,60,0.08);  color: var(--wrong); }
+  .check-item.warn { background: rgba(243,156,18,0.08); color: var(--warn); }
+  .check-icon { font-size: 15px; flex-shrink: 0; margin-top: 1px; }
+
+  /* DETAIL TABLE */
+  .table-section { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; margin-bottom: 28px; }
+  .table-header { padding: 14px 20px; border-bottom: 1px solid var(--border); font-size: 12px; letter-spacing: 1px; color: var(--text-dim); text-transform: uppercase; }
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { padding: 10px 14px; background: var(--surface2); color: var(--text-muted); font-weight: 500; text-align: left; font-size: 11px; letter-spacing: 1px; white-space: nowrap; border-bottom: 1px solid var(--border); }
+  td { padding: 10px 14px; border-bottom: 1px solid var(--border); vertical-align: top; color: var(--text-dim); }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: var(--surface2); }
+  td.no { color: var(--accent); font-weight: 700; text-align: center; }
+  td.answer { color: var(--correct); font-weight: 700; text-align: center; }
+  td.answer-text { color: var(--correct); }
+  td.image-yes { color: var(--warn); }
+  td.image-no  { color: var(--text-muted); }
+  td.error { color: var(--wrong); font-weight: 700; }
+  td.q-text { max-width: 280px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  /* EXAM INFO */
+  .exam-info { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 28px; }
+  .info-badge { padding: 6px 16px; background: var(--surface2); border: 1px solid var(--border); border-radius: 20px; font-size: 13px; color: var(--text-dim); }
+  .info-badge span { color: var(--accent); font-weight: 700; }
+
+  .placeholder { padding: 60px; text-align: center; color: var(--text-muted); font-size: 14px; }
+</style>
+</head>
+<body>
+
+<h1>マスターデータ検証ツール</h1>
+<p class="subtitle">JSONファイルを読み込んで、整合性を自動チェック・目視確認できます</p>
+
+<!-- UPLOAD -->
+<div class="upload-area" id="uploadArea" onclick="document.getElementById('fileInput').click()">
+  <p>JSONファイルをドラッグ＆ドロップ、またはクリックして選択</p>
+  <button class="upload-btn" onclick="event.stopPropagation(); document.getElementById('fileInput').click()">ファイルを選択</button>
+  <input type="file" id="fileInput" accept=".json">
+</div>
+
+<div id="result">
+  <div class="placeholder">↑ JSONファイルを読み込むと検証結果が表示されます</div>
+</div>
+
+<script>
+const uploadArea = document.getElementById('uploadArea');
+const fileInput  = document.getElementById('fileInput');
+
+uploadArea.addEventListener('dragover', e => { e.preventDefault(); uploadArea.classList.add('drag'); });
+uploadArea.addEventListener('dragleave', () => uploadArea.classList.remove('drag'));
+uploadArea.addEventListener('drop', e => {
+  e.preventDefault();
+  uploadArea.classList.remove('drag');
+  const file = e.dataTransfer.files[0];
+  if (file) readFile(file);
+});
+fileInput.addEventListener('change', () => {
+  if (fileInput.files[0]) readFile(fileInput.files[0]);
+});
+
+function readFile(file) {
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const data = JSON.parse(e.target.result);
+      renderResult(data, file.name);
+    } catch(err) {
+      document.getElementById('result').innerHTML =
+        `<div class="check-section"><div class="check-list"><div class="check-item fail"><span class="check-icon">✗</span>JSONの解析に失敗しました: ${err.message}</div></div></div>`;
+    }
+  };
+  reader.readAsText(file);
+}
+
+function renderResult(data, filename) {
+  const checks = [];
+  const qs = data.questions || [];
+  const exam = data.exam || {};
+
+  // ── 自動チェック ──
+  // 1. examメタ情報
+  checks.push(exam.round   ? { ok: true,  msg: `回次あり: 第${exam.round}回` }
+                           : { ok: false, msg: 'exam.round が未設定です' });
+  checks.push(exam.session ? { ok: true,  msg: `セッションあり: ${exam.session}` }
+                           : { ok: false, msg: 'exam.session が未設定です' });
+  checks.push(exam.total   ? { ok: true,  msg: `合計問題数の定義あり: ${exam.total}問` }
+                           : { ok: false, msg: 'exam.total が未設定です' });
+
+  // 2. 問題数
+  const expectedTotal = exam.total || 60;
+  checks.push(qs.length === expectedTotal
+    ? { ok: true,  msg: `問題数: ${qs.length}問（定義値と一致）` }
+    : { ok: false, msg: `問題数が不一致: ${qs.length}問（期待値: ${expectedTotal}問）` });
+
+  // 3. 問番号の重複・抜け
+  const nos = qs.map(q => q.no);
+  const uniqueNos = [...new Set(nos)];
+  const dupNos = nos.filter((n, i) => nos.indexOf(n) !== i);
+  checks.push(dupNos.length === 0
+    ? { ok: true,  msg: '問番号の重複なし' }
+    : { ok: false, msg: `問番号の重複あり: 問${dupNos.join('、問')}` });
+
+  const sortedNos = [...uniqueNos].sort((a,b) => a-b);
+  const missingNos = [];
+  for (let i = 1; i <= expectedTotal; i++) {
+    if (!sortedNos.includes(i)) missingNos.push(i);
+  }
+  checks.push(missingNos.length === 0
+    ? { ok: true,  msg: '問番号の抜けなし' }
+    : { ok: false, msg: `問番号の抜けあり: 問${missingNos.join('、問')}` });
+
+  // 4. 各問題の選択肢数・正解範囲
+  const choiceErrors = [], answerErrors = [], textErrors = [];
+  qs.forEach(q => {
+    if (!q.text || q.text.trim() === '') textErrors.push(q.no);
+    if (!Array.isArray(q.choices) || q.choices.length !== 5)
+      choiceErrors.push(`問${q.no}（${(q.choices||[]).length}択）`);
+    if (typeof q.answer !== 'number' || q.answer < 1 || q.answer > 5)
+      answerErrors.push(`問${q.no}（answer=${q.answer}）`);
+  });
+  checks.push(choiceErrors.length === 0
+    ? { ok: true,  msg: '全問題の選択肢数が5択で正常' }
+    : { ok: false, msg: `選択肢数エラー: ${choiceErrors.join('、')}` });
+  checks.push(answerErrors.length === 0
+    ? { ok: true,  msg: '全問題の正解番号が1〜5の範囲内' }
+    : { ok: false, msg: `正解番号エラー: ${answerErrors.join('、')}` });
+  checks.push(textErrors.length === 0
+    ? { ok: true,  msg: '全問題の問題文あり' }
+    : { ok: false, msg: `問題文が空: 問${textErrors.join('、問')}` });
+
+  // 5. 画像フィールド
+  const withImage  = qs.filter(q => q.image !== null && q.image !== undefined && q.image !== '');
+  const noImage    = qs.filter(q => q.image === null || q.image === undefined || q.image === '');
+  checks.push({ ok: null, msg: `画像あり: ${withImage.length}問、画像なし: ${noImage.length}問`, warn: true });
+
+  // ── 集計 ──
+  const passCount = checks.filter(c => c.ok === true).length;
+  const failCount = checks.filter(c => c.ok === false).length;
+  const warnCount = checks.filter(c => c.ok === null).length;
+
+  // ── HTML生成 ──
+  let html = '';
+
+  // Exam info badges
+  html += `<div class="exam-info">
+    <div class="info-badge">ファイル: <span>${filename}</span></div>
+    <div class="info-badge">第 <span>${exam.round || '?'}</span> 回</div>
+    <div class="info-badge"><span>${exam.session || '?'}</span> 問題</div>
+    <div class="info-badge">全 <span>${qs.length}</span> 問</div>
+    <div class="info-badge">画像あり <span>${withImage.length}</span> 問</div>
+  </div>`;
+
+  // Summary cards
+  html += `<div class="summary">
+    <div class="card"><div class="num info">${qs.length}</div><div class="lbl">総問題数</div></div>
+    <div class="card"><div class="num ok">${passCount}</div><div class="lbl">チェック合格</div></div>
+    <div class="card"><div class="num ng">${failCount}</div><div class="lbl">エラー</div></div>
+    <div class="card"><div class="num warn">${withImage.length}</div><div class="lbl">画像あり問題</div></div>
+  </div>`;
+
+  // Auto checks
+  html += `<div class="check-section">
+    <div class="check-header">🔍 自動整合性チェック</div>
+    <div class="check-list">`;
+  checks.forEach(c => {
+    const cls  = c.ok === true ? 'pass' : c.ok === false ? 'fail' : 'warn';
+    const icon = c.ok === true ? '✓'    : c.ok === false ? '✗'    : '⚠';
+    html += `<div class="check-item ${cls}"><span class="check-icon">${icon}</span>${c.msg}</div>`;
+  });
+  html += `</div></div>`;
+
+  // Detail table
+  html += `<div class="table-section">
+    <div class="table-header">📋 問題一覧（目視確認用）</div>
+    <div class="table-wrap">
+    <table>
+      <tr>
+        <th>問番号</th>
+        <th>問題文（先頭40字）</th>
+        <th>選択肢数</th>
+        <th>正解番号</th>
+        <th>正解テキスト</th>
+        <th>画像</th>
+      </tr>`;
+  qs.forEach(q => {
+    const choiceCount = Array.isArray(q.choices) ? q.choices.length : '?';
+    const choiceErr   = choiceCount !== 5;
+    const answerErr   = typeof q.answer !== 'number' || q.answer < 1 || q.answer > 5;
+    const answerText  = Array.isArray(q.choices) && q.choices[q.answer - 1] ? q.choices[q.answer - 1] : '—';
+    const imageVal    = q.image ? q.image : 'なし';
+    const imageCls    = q.image ? 'image-yes' : 'image-no';
+    html += `<tr>
+      <td class="no">${q.no}</td>
+      <td class="q-text">${(q.text || '').slice(0, 40)}${(q.text||'').length > 40 ? '…' : ''}</td>
+      <td class="${choiceErr ? 'error' : ''}" style="text-align:center">${choiceCount}</td>
+      <td class="${answerErr ? 'error' : 'answer'}">${q.answer}</td>
+      <td class="${answerErr ? 'error' : 'answer-text'}">${answerText}</td>
+      <td class="${imageCls}">${imageVal}</td>
+    </tr>`;
+  });
+  html += `</table></div></div>`;
+
+  document.getElementById('result').innerHTML = html;
+}
+</script>
+</body>
+</html>
